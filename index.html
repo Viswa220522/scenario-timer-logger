@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scenario Timer Logger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="panel timer-panel">
+      <div class="panel-header timer-header">
+        <div>
+          <p class="eyebrow">Timer</p>
+          <h1 id="activeScenarioLabel">Person – Walking</h1>
+        </div>
+        <p id="timerStatus" class="status-pill">Ready</p>
+      </div>
+
+      <div class="timer-metrics">
+        <div id="timerDisplay" class="timer-display">05:00</div>
+        <div class="duration-card">
+          <span class="duration-label">Total Duration</span>
+          <strong id="totalDurationDisplay">05 mins</strong>
+        </div>
+      </div>
+
+      <div class="adjust-row" aria-label="Timer adjust controls">
+        <button type="button" class="adjust-button" data-adjust="-60">-1m</button>
+        <button type="button" class="adjust-button" data-adjust="-10">-10s</button>
+        <span class="adjust-label">Timer</span>
+        <button type="button" class="adjust-button" data-adjust="10">+10s</button>
+        <button type="button" class="adjust-button" data-adjust="60">+1m</button>
+      </div>
+
+      <div class="timer-actions">
+        <button id="toggleCustomTimerBtn" class="secondary-button" type="button">Custom</button>
+      </div>
+
+      <div id="customTimerPanel" class="custom-timer hidden">
+        <div class="inline-add-row">
+          <input id="customMinutesInput" class="text-input" type="number" min="0" max="120" value="5" placeholder="Minutes">
+          <input id="customSecondsInput" class="text-input" type="number" min="0" max="59" value="0" placeholder="Seconds">
+          <button id="applyCustomTimerBtn" class="secondary-button" type="button">Set</button>
+        </div>
+      </div>
+
+      <div class="primary-actions">
+        <button id="startBtn" class="primary-button start-button" type="button">Start</button>
+        <button id="endBtn" class="primary-button end-button" type="button">End</button>
+      </div>
+
+      <div class="timer-footer">
+        <p id="doubleTapHint" class="hint-text">End requires double tap within 500ms.</p>
+        <label class="sound-toggle"><input id="soundToggle" type="checkbox"> End sound</label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header compact-header">
+        <div>
+          <p class="eyebrow">Scenario</p>
+          <h2>Quick selection</h2>
+        </div>
+      </div>
+
+      <label class="field-label" for="scenarioPrefixSelect">Prefix</label>
+      <div class="prefix-row">
+        <select id="scenarioPrefixSelect" class="text-input"></select>
+        <button id="togglePrefixManagerBtn" class="secondary-button" type="button">+ Add Prefix</button>
+      </div>
+      <input id="customPrefixInput" class="text-input hidden" type="text" placeholder="Type custom prefix">
+
+      <div id="prefixManager" class="manager hidden">
+        <div class="inline-add-row">
+          <input id="newPrefixInput" class="text-input" type="text" placeholder="Add a saved prefix">
+          <button id="addPrefixBtn" class="secondary-button" type="button">Save</button>
+        </div>
+        <div id="prefixList" class="pill-list"></div>
+      </div>
+
+      <label class="field-label" for="scenarioInput">Scenario</label>
+      <input id="scenarioInput" class="text-input" type="text" placeholder="Type scenario name">
+      <div id="scenarioButtons" class="quick-grid"></div>
+
+      <div class="inline-add-row">
+        <input id="newScenarioInput" class="text-input" type="text" placeholder="Add custom scenario">
+        <button id="addScenarioBtn" class="secondary-button" type="button">+ Add Scenario</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header compact-header">
+        <div>
+          <p class="eyebrow">Notes</p>
+          <h2>Metadata</h2>
+        </div>
+        <button id="insertTimeBtn" class="secondary-button" type="button">+ Insert Current Time</button>
+      </div>
+
+      <textarea id="notesInput" class="notes-input" placeholder="Room, hardware, tester, anomalies, setup notes..."></textarea>
+      <div class="history-actions">
+        <button id="copyLogsBtn" class="secondary-button" type="button">Copy Logs</button>
+        <button id="clearLogsBtn" class="secondary-button danger-button" type="button">Clear Logs</button>
+      </div>
+      <p id="copyStatus" class="hint-text">Logs ready.</p>
+    </section>
+
+    <section class="panel history-panel">
+      <button id="historyToggleBtn" class="history-toggle" type="button" aria-expanded="true">
+        <span>Scenario History</span>
+        <span id="historyCount">0</span>
+      </button>
+      <div id="historyBody" class="history-body">
+        <div id="logList" class="log-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toastMessage"></span>
+    <button id="toastUndoBtn" class="toast-button" type="button">UNDO</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
