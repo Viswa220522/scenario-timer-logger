@@ -11,8 +11,11 @@
 </head>
 <body>
   <header class="clock-bar">
-    <span class="clock-label">Local Time</span>
-    <span id="liveClock" class="live-clock">00:00:00</span>
+    <div class="clock-location">Chennai, India (IST)</div>
+    <div class="clock-main">
+      <span id="liveClock" class="live-clock">00:00:00</span>
+    </div>
+    <div class="clock-info">Today, +0 hrs</div>
   </header>
 
   <main class="app-shell">
@@ -44,9 +47,10 @@
 
       <div class="timer-actions">
         <button id="toggleCustomTimerBtn" class="secondary-button" type="button">Custom</button>
+        <button id="resetTimerBtn" class="secondary-button" type="button">Reset</button>
       </div>
 
-      <div id="customTimerPanel" class="custom-timer hidden">
+      <div id="customTimerPanel" class="custom-timer">
         <div class="custom-timer-row">
           <input id="customMinutesInput" class="text-input time-part-input" type="number" min="0" max="120" value="5" placeholder="0">
           <span class="time-sep">m</span>
@@ -76,11 +80,11 @@
           <p class="eyebrow">Test Sequence</p>
           <h2>Scenarios</h2>
         </div>
-        <button id="addSequenceRowBtn" class="secondary-button" type="button">+ Add</button>
+        <button id="addSequenceRowBtn" class="secondary-button" type="button">+ Add Row</button>
       </div>
 
       <div id="sequenceList" class="sequence-list">
-        <p class="hint-text seq-empty-hint">No scenarios added. Tap + Add to build your sequence.</p>
+        <p class="hint-text seq-empty-hint">No scenarios. Tap + Add Row to build your sequence.</p>
       </div>
 
       <p id="sequenceHint" class="hint-text seq-status-hint"></p>

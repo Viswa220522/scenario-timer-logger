@@ -1,4 +1,4 @@
-const STORAGE_KEY = "rayiot-logger-v4";
+const STORAGE_KEY = "rayiot-logger-v5";
 const DEFAULT_DURATION_SECONDS = 5 * 60;
 const END_DOUBLE_TAP_MS = 500;
 const HOLD_DELETE_MS = 500;
@@ -36,6 +36,7 @@ const els = {
   customMinutesInput: document.getElementById("customMinutesInput"),
   customSecondsInput: document.getElementById("customSecondsInput"),
   applyCustomTimerBtn: document.getElementById("applyCustomTimerBtn"),
+  resetTimerBtn: document.getElementById("resetTimerBtn"),
   addSequenceRowBtn: document.getElementById("addSequenceRowBtn"),
   sequenceList: document.getElementById("sequenceList"),
   sequenceHint: document.getElementById("sequenceHint"),
@@ -87,6 +88,7 @@ function bindEvents() {
     els.customTimerPanel.classList.toggle("hidden");
   });
   els.applyCustomTimerBtn.addEventListener("click", applyCustomTimer);
+  els.resetTimerBtn.addEventListener("click", resetTimer);
 
   els.addSequenceRowBtn.addEventListener("click", addSequenceRow);
   els.sequenceList.addEventListener("click", handleSequenceListClick);
@@ -121,7 +123,13 @@ function renderAll() {
 }
 
 function renderClock() {
-  els.liveClock.textContent = formatTime(Date.now());
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  els.liveClock.textContent = `${String(displayHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 function renderTimer() {
@@ -152,7 +160,7 @@ function renderTimer() {
   }
 
   els.soundToggle.checked = state.soundEnabled;
-  els.startBtn.disabled = Boolean(state.running) || state.sequence.length === 0 || state.activeSequenceIndex >= state.sequence.length;
+  els.startBtn.disabled = state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length;
   els.endBtn.disabled = !state.running;
 
   const parts = secondsToParts(state.baseDurationSeconds);
@@ -162,7 +170,7 @@ function renderTimer() {
 
 function renderSequence() {
   if (state.sequence.length === 0) {
-    els.sequenceList.innerHTML = '<p class="hint-text seq-empty-hint">No scenarios added. Tap + Add to build your sequence.</p>';
+    els.sequenceList.innerHTML = '<p class="hint-text seq-empty-hint">No scenarios. Tap + Add Row to build your sequence.</p>';
     els.sequenceHint.textContent = "";
     renderActiveScenarioLabel();
     return;
@@ -170,44 +178,53 @@ function renderSequence() {
 
   els.sequenceList.innerHTML = state.sequence.map((row, index) => {
     const isActive = index === state.activeSequenceIndex;
-    const isDone = index < state.activeSequenceIndex || (index === state.activeSequenceIndex && !state.running && state.logs.some((l) => l.sequenceIndex === index));
-    const statusClass = isActive ? "seq-active" : isDone ? "seq-done" : "";
+    const statusClass = isActive ? "seq-active" : "";
+    const prefixOptions = ["Person", "No Person", "Environment", "Custom"]
+      .map(p => `<option value="${p}" ${row.prefix === p ? "selected" : ""}>${p}</option>`)
+      .join("");
 
     return `
       <div class="seq-row ${statusClass}" data-seq-index="${index}">
-        <div class="seq-index-badge">${index + 1}</div>
+        <div class="seq-controls">
+          <button type="button" class="seq-btn" data-seq-up="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" class="seq-btn" data-seq-down="${index}" title="Move down" ${index === state.sequence.length - 1 ? "disabled" : ""}>↓</button>
+        </div>
         <div class="seq-fields">
-          <input class="text-input seq-prefix-input" type="text" value="${escapeAttribute(row.prefix)}" data-seq-prefix="${index}" placeholder="Prefix (e.g. Person)">
+          <select class="text-input seq-prefix-input" data-seq-prefix-select="${index}">
+            ${prefixOptions}
+          </select>
           <input class="text-input seq-scenario-input" type="text" value="${escapeAttribute(row.scenario)}" data-seq-scenario="${index}" placeholder="Scenario name">
           <div class="seq-dur-row">
             <input class="text-input seq-dur-input" type="number" min="1" max="240" value="${row.durationMinutes}" data-seq-duration="${index}" placeholder="mins">
             <span class="seq-dur-label">mins</span>
           </div>
         </div>
-        <button class="seq-remove-btn" type="button" data-seq-remove="${index}" title="Remove">×</button>
+        <div class="seq-actions">
+          <button type="button" class="seq-activate-btn ${isActive ? "active" : ""}" data-seq-activate="${index}">
+            ${isActive ? "▶ Active" : "▶ Set Active"}
+          </button>
+          <button type="button" class="seq-remove-btn" data-seq-remove="${index}" title="Remove">×</button>
+        </div>
       </div>
     `;
   }).join("");
 
-  const remaining = state.sequence.length - Math.max(0, state.activeSequenceIndex);
   if (state.activeSequenceIndex < 0) {
-    els.sequenceHint.textContent = `${state.sequence.length} scenario${state.sequence.length !== 1 ? "s" : ""} queued. Tap Start to begin.`;
+    els.sequenceHint.textContent = `Tap "Set Active" on a row to enable Start`;
   } else if (state.activeSequenceIndex >= state.sequence.length) {
     els.sequenceHint.textContent = "All scenarios complete.";
   } else {
-    els.sequenceHint.textContent = `Scenario ${state.activeSequenceIndex + 1} of ${state.sequence.length}. ${remaining - 1} remaining after this.`;
+    const activeRow = state.sequence[state.activeSequenceIndex];
+    els.sequenceHint.textContent = `Active: ${buildScenarioName(activeRow)} (${activeRow.durationMinutes} mins) – Tap Start to begin`;
   }
 
   renderActiveScenarioLabel();
 }
 
 function renderActiveScenarioLabel() {
-  const row = state.sequence[state.activeSequenceIndex];
-  if (state.running && row) {
+  if (state.activeSequenceIndex >= 0 && state.activeSequenceIndex < state.sequence.length) {
+    const row = state.sequence[state.activeSequenceIndex];
     els.activeScenarioLabel.textContent = buildScenarioName(row);
-  } else if (state.sequence.length > 0) {
-    const next = state.sequence[Math.max(0, state.activeSequenceIndex)] || state.sequence[0];
-    els.activeScenarioLabel.textContent = buildScenarioName(next);
   } else {
     els.activeScenarioLabel.textContent = "No scenario selected";
   }
@@ -263,23 +280,19 @@ function renderHistory() {
 function renderToast() {
   if (!state.toast) {
     els.toast.classList.add("hidden");
+    els.toast.removeAttribute("aria-live");
     return;
   }
   els.toast.classList.remove("hidden");
+  els.toast.setAttribute("aria-live", "polite");
   els.toastMessage.textContent = state.toast.message;
 }
 
 function startScenario() {
-  if (state.running || state.sequence.length === 0) {
+  if (state.running || state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length) {
     return;
   }
 
-  const targetIndex = state.activeSequenceIndex < 0 ? 0 : state.activeSequenceIndex;
-  if (targetIndex >= state.sequence.length) {
-    return;
-  }
-
-  state.activeSequenceIndex = targetIndex;
   const row = state.sequence[state.activeSequenceIndex];
   const durationSeconds = Math.max(10, (row.durationMinutes || 5) * 60);
   state.baseDurationSeconds = durationSeconds;
@@ -343,7 +356,6 @@ function endScenario() {
   };
 
   state.logs.push(log);
-  state.activeSequenceIndex = state.running.sequenceIndex + 1;
   state.running = null;
   state.lastEndTapAt = 0;
   els.doubleTapHint.textContent = "End requires double-tap within 500ms.";
@@ -385,11 +397,18 @@ function applyCustomTimer() {
   persistState();
 }
 
+function resetTimer() {
+  if (state.activeSequenceIndex >= 0 && state.activeSequenceIndex < state.sequence.length) {
+    state.baseDurationSeconds = state.sequence[state.activeSequenceIndex].durationMinutes * 60;
+  } else {
+    state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
+  }
+  renderTimer();
+  persistState();
+}
+
 function addSequenceRow() {
   state.sequence.push({ prefix: "Person", scenario: "Walking", durationMinutes: 7 });
-  if (state.activeSequenceIndex < 0) {
-    state.activeSequenceIndex = -1;
-  }
   renderSequence();
   renderTimer();
   persistState();
@@ -399,19 +418,70 @@ function handleSequenceListClick(event) {
   const removeIndex = event.target.dataset.seqRemove;
   if (removeIndex !== undefined) {
     const idx = Number(removeIndex);
-    pushUndoAction({ type: "seq-remove", sequence: structuredClone(state.sequence), activeSequenceIndex: state.activeSequenceIndex });
+    pushUndoAction({
+      type: "seq-remove",
+      sequence: structuredClone(state.sequence),
+      activeSequenceIndex: state.activeSequenceIndex,
+      notes: state.notes,
+      logs: structuredClone(state.logs)
+    });
     state.sequence.splice(idx, 1);
     if (state.activeSequenceIndex >= state.sequence.length) {
       state.activeSequenceIndex = state.sequence.length - 1;
     }
+    if (state.activeSequenceIndex < 0) {
+      state.activeSequenceIndex = -1;
+    }
     renderSequence();
     renderTimer();
     persistState();
+    return;
+  }
+
+  const activateIndex = event.target.dataset.seqActivate;
+  if (activateIndex !== undefined) {
+    const idx = Number(activateIndex);
+    state.activeSequenceIndex = idx;
+    state.baseDurationSeconds = state.sequence[idx].durationMinutes * 60;
+    renderSequence();
+    renderTimer();
+    persistState();
+    return;
+  }
+
+  const upIndex = event.target.dataset.seqUp;
+  if (upIndex !== undefined) {
+    const idx = Number(upIndex);
+    if (idx > 0) {
+      const temp = state.sequence[idx - 1];
+      state.sequence[idx - 1] = state.sequence[idx];
+      state.sequence[idx] = temp;
+      if (state.activeSequenceIndex === idx) state.activeSequenceIndex = idx - 1;
+      else if (state.activeSequenceIndex === idx - 1) state.activeSequenceIndex = idx;
+    }
+    renderSequence();
+    persistState();
+    return;
+  }
+
+  const downIndex = event.target.dataset.seqDown;
+  if (downIndex !== undefined) {
+    const idx = Number(downIndex);
+    if (idx < state.sequence.length - 1) {
+      const temp = state.sequence[idx + 1];
+      state.sequence[idx + 1] = state.sequence[idx];
+      state.sequence[idx] = temp;
+      if (state.activeSequenceIndex === idx) state.activeSequenceIndex = idx + 1;
+      else if (state.activeSequenceIndex === idx + 1) state.activeSequenceIndex = idx;
+    }
+    renderSequence();
+    persistState();
+    return;
   }
 }
 
 function handleSequenceListInput(event) {
-  const prefixIndex = event.target.dataset.seqPrefix;
+  const prefixIndex = event.target.dataset.seqPrefixSelect;
   if (prefixIndex !== undefined) {
     state.sequence[Number(prefixIndex)].prefix = event.target.value;
     renderActiveScenarioLabel();
@@ -431,11 +501,8 @@ function handleSequenceListInput(event) {
   if (durationIndex !== undefined) {
     const mins = Math.max(1, Math.min(240, Number(event.target.value) || 1));
     state.sequence[Number(durationIndex)].durationMinutes = mins;
-    if (!state.running) {
-      const activeRow = state.sequence[state.activeSequenceIndex >= 0 ? state.activeSequenceIndex : 0];
-      if (activeRow) {
-        state.baseDurationSeconds = activeRow.durationMinutes * 60;
-      }
+    if (state.activeSequenceIndex === Number(durationIndex) && !state.running) {
+      state.baseDurationSeconds = mins * 60;
     }
     renderTimer();
     persistState();
@@ -443,7 +510,11 @@ function handleSequenceListInput(event) {
 }
 
 function insertCurrentTimeIntoNotes() {
-  const time = formatTime(Date.now());
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+  const time = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   const prefix = state.notes && !state.notes.endsWith("\n") ? "\n" : "";
   state.notes += `${prefix}${time}`;
   renderNotes();
@@ -528,7 +599,8 @@ function deleteLog(logId) {
     logs: structuredClone(state.logs),
     sequence: structuredClone(state.sequence),
     activeSequenceIndex: state.activeSequenceIndex,
-    notes: state.notes
+    notes: state.notes,
+    baseDurationSeconds: state.baseDurationSeconds
   });
 
   state.logs.splice(index, 1);
@@ -576,7 +648,8 @@ function clearLogs() {
     logs: structuredClone(state.logs),
     sequence: structuredClone(state.sequence),
     activeSequenceIndex: state.activeSequenceIndex,
-    notes: state.notes
+    notes: state.notes,
+    baseDurationSeconds: state.baseDurationSeconds
   });
 
   state.logs = [];
@@ -604,6 +677,7 @@ function undoLastAction() {
     if (action.sequence) state.sequence = structuredClone(action.sequence);
     if (action.activeSequenceIndex !== undefined) state.activeSequenceIndex = action.activeSequenceIndex;
     if (action.notes !== undefined) state.notes = action.notes;
+    if (action.baseDurationSeconds !== undefined) state.baseDurationSeconds = action.baseDurationSeconds;
   }
 
   if (action.type === "seq-remove") {
@@ -689,7 +763,7 @@ function stopAlertSound() {
 function buildScenarioName(row) {
   const prefix = (row.prefix || "").trim() || "Person";
   const scenario = (row.scenario || "").trim() || "Unnamed";
-  return `${prefix} \u2013 ${scenario}`;
+  return `${prefix} – ${scenario}`;
 }
 
 function persistState() {
