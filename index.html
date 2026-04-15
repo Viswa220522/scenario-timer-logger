@@ -10,12 +10,18 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header class="clock-bar">
+    <span class="clock-label">Local Time</span>
+    <span id="liveClock" class="live-clock">00:00:00</span>
+  </header>
+
   <main class="app-shell">
+
     <section class="panel timer-panel">
-      <div class="panel-header timer-header">
-        <div>
-          <p class="eyebrow">Timer</p>
-          <h1 id="activeScenarioLabel">Person – Walking</h1>
+      <div class="panel-header">
+        <div class="header-left">
+          <p class="eyebrow">Active Scenario</p>
+          <h1 id="activeScenarioLabel">No scenario selected</h1>
         </div>
         <p id="timerStatus" class="status-pill">Ready</p>
       </div>
@@ -23,7 +29,7 @@
       <div class="timer-metrics">
         <div id="timerDisplay" class="timer-display">05:00</div>
         <div class="duration-card">
-          <span class="duration-label">Total Duration</span>
+          <span class="duration-label">Total</span>
           <strong id="totalDurationDisplay">05 mins</strong>
         </div>
       </div>
@@ -41,83 +47,73 @@
       </div>
 
       <div id="customTimerPanel" class="custom-timer hidden">
-        <div class="inline-add-row">
-          <input id="customMinutesInput" class="text-input" type="number" min="0" max="120" value="5" placeholder="Minutes">
-          <input id="customSecondsInput" class="text-input" type="number" min="0" max="59" value="0" placeholder="Seconds">
+        <div class="custom-timer-row">
+          <input id="customMinutesInput" class="text-input time-part-input" type="number" min="0" max="120" value="5" placeholder="0">
+          <span class="time-sep">m</span>
+          <input id="customSecondsInput" class="text-input time-part-input" type="number" min="0" max="59" value="0" placeholder="0">
+          <span class="time-sep">s</span>
           <button id="applyCustomTimerBtn" class="secondary-button" type="button">Set</button>
         </div>
       </div>
 
       <div class="primary-actions">
         <button id="startBtn" class="primary-button start-button" type="button">Start</button>
-        <button id="endBtn" class="primary-button end-button" type="button">End</button>
+        <button id="endBtn" class="primary-button end-button" type="button" disabled>End</button>
       </div>
 
       <div class="timer-footer">
-        <p id="doubleTapHint" class="hint-text">End requires double tap within 500ms.</p>
-        <label class="sound-toggle"><input id="soundToggle" type="checkbox"> End sound</label>
+        <p id="doubleTapHint" class="hint-text">End requires double-tap within 500ms.</p>
+        <label class="sound-toggle">
+          <input id="soundToggle" type="checkbox" checked>
+          <span>Alert sound</span>
+        </label>
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel sequence-panel">
       <div class="panel-header compact-header">
         <div>
-          <p class="eyebrow">Scenario</p>
-          <h2>Quick selection</h2>
+          <p class="eyebrow">Test Sequence</p>
+          <h2>Scenarios</h2>
         </div>
+        <button id="addSequenceRowBtn" class="secondary-button" type="button">+ Add</button>
       </div>
 
-      <label class="field-label" for="scenarioPrefixSelect">Prefix</label>
-      <div class="prefix-row">
-        <select id="scenarioPrefixSelect" class="text-input"></select>
-        <button id="togglePrefixManagerBtn" class="secondary-button" type="button">+ Add Prefix</button>
-      </div>
-      <input id="customPrefixInput" class="text-input hidden" type="text" placeholder="Type custom prefix">
-
-      <div id="prefixManager" class="manager hidden">
-        <div class="inline-add-row">
-          <input id="newPrefixInput" class="text-input" type="text" placeholder="Add a saved prefix">
-          <button id="addPrefixBtn" class="secondary-button" type="button">Save</button>
-        </div>
-        <div id="prefixList" class="pill-list"></div>
+      <div id="sequenceList" class="sequence-list">
+        <p class="hint-text seq-empty-hint">No scenarios added. Tap + Add to build your sequence.</p>
       </div>
 
-      <label class="field-label" for="scenarioInput">Scenario</label>
-      <input id="scenarioInput" class="text-input" type="text" placeholder="Type scenario name">
-      <div id="scenarioButtons" class="quick-grid"></div>
-
-      <div class="inline-add-row">
-        <input id="newScenarioInput" class="text-input" type="text" placeholder="Add custom scenario">
-        <button id="addScenarioBtn" class="secondary-button" type="button">+ Add Scenario</button>
-      </div>
+      <p id="sequenceHint" class="hint-text seq-status-hint"></p>
     </section>
 
-    <section class="panel">
+    <section class="panel notes-panel">
       <div class="panel-header compact-header">
         <div>
           <p class="eyebrow">Notes</p>
           <h2>Metadata</h2>
         </div>
-        <button id="insertTimeBtn" class="secondary-button" type="button">+ Insert Current Time</button>
+        <button id="insertTimeBtn" class="secondary-button" type="button">+ Time</button>
       </div>
-
       <textarea id="notesInput" class="notes-input" placeholder="Room, hardware, tester, anomalies, setup notes..."></textarea>
-      <div class="history-actions">
-        <button id="copyLogsBtn" class="secondary-button" type="button">Copy Logs</button>
-        <button id="clearLogsBtn" class="secondary-button danger-button" type="button">Clear Logs</button>
-      </div>
-      <p id="copyStatus" class="hint-text">Logs ready.</p>
     </section>
 
     <section class="panel history-panel">
-      <button id="historyToggleBtn" class="history-toggle" type="button" aria-expanded="true">
-        <span>Scenario History</span>
-        <span id="historyCount">0</span>
-      </button>
+      <div class="history-header-row">
+        <button id="historyToggleBtn" class="history-toggle" type="button" aria-expanded="true">
+          <span>Scenario History</span>
+          <span id="historyCount" class="badge">0</span>
+        </button>
+        <div class="history-toolbar">
+          <button id="copyLogsBtn" class="secondary-button" type="button">Copy</button>
+          <button id="clearLogsBtn" class="secondary-button danger-button" type="button">Clear</button>
+        </div>
+      </div>
+      <p id="copyStatus" class="hint-text">Logs ready.</p>
       <div id="historyBody" class="history-body">
         <div id="logList" class="log-list"></div>
       </div>
     </section>
+
   </main>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite">
