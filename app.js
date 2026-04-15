@@ -124,12 +124,10 @@ function renderAll() {
 
 function renderClock() {
   const now = new Date();
-  let hours = now.getHours();
+  const hours = now.getHours();
   const minutes = now.getMinutes();
-  const period = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-  els.liveClock.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
+  const seconds = now.getSeconds();
+  els.liveClock.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function renderTimer() {
