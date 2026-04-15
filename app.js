@@ -31,6 +31,11 @@ const els = {
   endBtn: document.getElementById("endBtn"),
   doubleTapHint: document.getElementById("doubleTapHint"),
   soundToggle: document.getElementById("soundToggle"),
+  toggleCustomTimerBtn: document.getElementById("toggleCustomTimerBtn"),
+  customTimerPanel: document.getElementById("customTimerPanel"),
+  customMinutesInput: document.getElementById("customMinutesInput"),
+  customSecondsInput: document.getElementById("customSecondsInput"),
+  applyCustomTimerBtn: document.getElementById("applyCustomTimerBtn"),
   resetTimerBtn: document.getElementById("resetTimerBtn"),
   addSequenceRowBtn: document.getElementById("addSequenceRowBtn"),
   sequenceList: document.getElementById("sequenceList"),
@@ -79,6 +84,10 @@ function bindEvents() {
     button.addEventListener("click", () => adjustTimer(Number(button.dataset.adjust)));
   });
 
+  els.toggleCustomTimerBtn.addEventListener("click", () => {
+    els.customTimerPanel.classList.toggle("hidden");
+  });
+  els.applyCustomTimerBtn.addEventListener("click", applyCustomTimer);
   els.resetTimerBtn.addEventListener("click", resetTimer);
 
   els.addSequenceRowBtn.addEventListener("click", addSequenceRow);
@@ -151,6 +160,10 @@ function renderTimer() {
   els.soundToggle.checked = state.soundEnabled;
   els.startBtn.disabled = state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length;
   els.endBtn.disabled = !state.running;
+
+  const parts = secondsToParts(state.baseDurationSeconds);
+  els.customMinutesInput.value = String(parts.minutes);
+  els.customSecondsInput.value = String(parts.seconds);
 }
 
 function renderSequence() {
