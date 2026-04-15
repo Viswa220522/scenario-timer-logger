@@ -817,17 +817,26 @@ function startAlertSound() {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sawtooth";
-    osc.frequency.value = 660;
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+    gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.04);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
+
+    const toggleHz = [880, 587.33];
+    let step = 0;
+    const toggleId = window.setInterval(() => {
+      step = (step + 1) % toggleHz.length;
+      osc.frequency.setValueAtTime(toggleHz[step], ctx.currentTime);
+    }, 420);
+
     alertAudio = {
       ctx,
       stop: () => {
         try {
+          clearInterval(toggleId);
           gain.gain.cancelScheduledValues(ctx.currentTime);
           gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
           osc.stop(ctx.currentTime + 0.1);
