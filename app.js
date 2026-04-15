@@ -41,6 +41,7 @@ const els = {
   doubleTapHint: document.getElementById("doubleTapHint"),
   soundToggle: document.getElementById("soundToggle"),
   resetTimerBtn: document.getElementById("resetTimerBtn"),
+  stopSoundBtn: document.getElementById("stopSoundBtn"),
   addSequenceRowBtn: document.getElementById("addSequenceRowBtn"),
   sequenceList: document.getElementById("sequenceList"),
   sequenceHint: document.getElementById("sequenceHint"),
@@ -89,6 +90,10 @@ function bindEvents() {
   });
 
   els.resetTimerBtn.addEventListener("click", resetTimer);
+  els.stopSoundBtn.addEventListener("click", () => {
+    stopAlertSound();
+    renderTimer();
+  });
 
   els.addSequenceRowBtn.addEventListener("click", addSequenceRow);
   els.sequenceList.addEventListener("click", handleSequenceListClick);
@@ -160,6 +165,7 @@ function renderTimer() {
   els.soundToggle.checked = state.soundEnabled;
   els.startBtn.disabled = Boolean(state.running) || state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length;
   els.endBtn.disabled = !state.running;
+  els.stopSoundBtn.classList.toggle("hidden", !alertAudio);
 }
 
 function renderSequence() {

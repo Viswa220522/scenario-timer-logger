@@ -318,6 +318,19 @@ button {
   flex: 1;
 }
 
+.stop-sound-button {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+  color: var(--warn);
+  font-weight: 700;
+  animation: pulse-warn 1.2s ease-in-out infinite;
+}
+
+.stop-sound-button:hover {
+  background: var(--warn);
+  color: #0b1220;
+}
+
 .primary-actions {
   display: flex;
   gap: 10px;
