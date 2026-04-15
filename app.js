@@ -1,9 +1,13 @@
-const STORAGE_KEY = "rayiot-logger-v5";
+const STORAGE_KEY = "rayiot-logger-v6";
 const DEFAULT_DURATION_SECONDS = 5 * 60;
 const END_DOUBLE_TAP_MS = 500;
 const HOLD_DELETE_MS = 500;
 const MAX_UNDO_LEVELS = 3;
 const TOAST_DURATION_MS = 10000;
+const CONFIRM_WINDOW_MS = 3000;
+
+const SCENARIO_PRESETS = ["Walking", "Standing", "Sitting", "Running", "Idle", "Custom"];
+const PREFIX_OPTIONS = ["Person", "No Person", "Environment", "Custom"];
 
 const state = {
   sequence: [],
@@ -15,11 +19,16 @@ const state = {
   soundEnabled: true,
   historyCollapsed: false,
   editingLogId: null,
-  editDraft: { startTime: "", endTime: "" },
+  editDraft: { scenarioName: "", startTime: "", endTime: "" },
   lastEndTapAt: 0,
   undoStack: [],
-  toast: null
+  toast: null,
+  pendingClear: false,
+  pendingRemoveIndex: -1
 };
+
+let pendingClearTimer = null;
+let pendingRemoveTimer = null;
 
 const els = {
   liveClock: document.getElementById("liveClock"),
@@ -31,11 +40,6 @@ const els = {
   endBtn: document.getElementById("endBtn"),
   doubleTapHint: document.getElementById("doubleTapHint"),
   soundToggle: document.getElementById("soundToggle"),
-  toggleCustomTimerBtn: document.getElementById("toggleCustomTimerBtn"),
-  customTimerPanel: document.getElementById("customTimerPanel"),
-  customMinutesInput: document.getElementById("customMinutesInput"),
-  customSecondsInput: document.getElementById("customSecondsInput"),
-  applyCustomTimerBtn: document.getElementById("applyCustomTimerBtn"),
   resetTimerBtn: document.getElementById("resetTimerBtn"),
   addSequenceRowBtn: document.getElementById("addSequenceRowBtn"),
   sequenceList: document.getElementById("sequenceList"),
@@ -84,10 +88,6 @@ function bindEvents() {
     button.addEventListener("click", () => adjustTimer(Number(button.dataset.adjust)));
   });
 
-  els.toggleCustomTimerBtn.addEventListener("click", () => {
-    els.customTimerPanel.classList.toggle("hidden");
-  });
-  els.applyCustomTimerBtn.addEventListener("click", applyCustomTimer);
   els.resetTimerBtn.addEventListener("click", resetTimer);
 
   els.addSequenceRowBtn.addEventListener("click", addSequenceRow);
@@ -101,7 +101,7 @@ function bindEvents() {
   els.insertTimeBtn.addEventListener("click", insertCurrentTimeIntoNotes);
 
   els.copyLogsBtn.addEventListener("click", copyLogs);
-  els.clearLogsBtn.addEventListener("click", clearLogs);
+  els.clearLogsBtn.addEventListener("click", handleClearLogsTap);
   els.historyToggleBtn.addEventListener("click", toggleHistory);
   els.toastUndoBtn.addEventListener("click", undoLastAction);
 
@@ -124,10 +124,12 @@ function renderAll() {
 
 function renderClock() {
   const now = new Date();
-  const hours = now.getHours();
+  let hours = now.getHours();
   const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  els.liveClock.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const period = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  els.liveClock.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
 function renderTimer() {
@@ -158,12 +160,8 @@ function renderTimer() {
   }
 
   els.soundToggle.checked = state.soundEnabled;
-  els.startBtn.disabled = state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length;
+  els.startBtn.disabled = Boolean(state.running) || state.activeSequenceIndex < 0 || state.activeSequenceIndex >= state.sequence.length;
   els.endBtn.disabled = !state.running;
-
-  const parts = secondsToParts(state.baseDurationSeconds);
-  els.customMinutesInput.value = String(parts.minutes);
-  els.customSecondsInput.value = String(parts.seconds);
 }
 
 function renderSequence() {
@@ -176,13 +174,23 @@ function renderSequence() {
 
   els.sequenceList.innerHTML = state.sequence.map((row, index) => {
     const isActive = index === state.activeSequenceIndex;
-    const statusClass = isActive ? "seq-active" : "";
-    const prefixOptions = ["Person", "No Person", "Environment", "Custom"]
+    const isCompleted = Boolean(row.completed);
+    const isPendingRemove = state.pendingRemoveIndex === index;
+    const rowClasses = ["seq-row"];
+    if (isActive) rowClasses.push("seq-active");
+    if (isCompleted) rowClasses.push("seq-completed");
+
+    const prefixOptions = PREFIX_OPTIONS
       .map(p => `<option value="${p}" ${row.prefix === p ? "selected" : ""}>${p}</option>`)
       .join("");
+    const presetOptions = SCENARIO_PRESETS
+      .map(s => `<option value="${s}" ${row.scenarioPreset === s ? "selected" : ""}>${s}</option>`)
+      .join("");
+    const showCustom = row.scenarioPreset === "Custom";
 
     return `
-      <div class="seq-row ${statusClass}" data-seq-index="${index}">
+      <div class="${rowClasses.join(" ")}" data-seq-index="${index}">
+        <div class="seq-index-number">${index + 1}</div>
         <div class="seq-controls">
           <button type="button" class="seq-btn" data-seq-up="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>↑</button>
           <button type="button" class="seq-btn" data-seq-down="${index}" title="Move down" ${index === state.sequence.length - 1 ? "disabled" : ""}>↓</button>
@@ -191,7 +199,10 @@ function renderSequence() {
           <select class="text-input seq-prefix-input" data-seq-prefix-select="${index}">
             ${prefixOptions}
           </select>
-          <input class="text-input seq-scenario-input" type="text" value="${escapeAttribute(row.scenario)}" data-seq-scenario="${index}" placeholder="Scenario name">
+          <select class="text-input seq-scenario-select" data-seq-scenario-select="${index}">
+            ${presetOptions}
+          </select>
+          ${showCustom ? `<input class="text-input seq-scenario-input" type="text" value="${escapeAttribute(row.scenario)}" data-seq-scenario-text="${index}" placeholder="Type scenario name">` : ""}
           <div class="seq-dur-row">
             <input class="text-input seq-dur-input" type="number" min="1" max="240" value="${row.durationMinutes}" data-seq-duration="${index}" placeholder="mins">
             <span class="seq-dur-label">mins</span>
@@ -199,16 +210,18 @@ function renderSequence() {
         </div>
         <div class="seq-actions">
           <button type="button" class="seq-activate-btn ${isActive ? "active" : ""}" data-seq-activate="${index}">
-            ${isActive ? "▶ Active" : "▶ Set Active"}
+            ${isCompleted ? "✔ Done" : isActive ? "▶ Active" : "▶ Set Active"}
           </button>
-          <button type="button" class="seq-remove-btn" data-seq-remove="${index}" title="Remove">×</button>
+          <button type="button" class="seq-remove-btn ${isPendingRemove ? "pending" : ""}" data-seq-remove="${index}" title="Remove">
+            ${isPendingRemove ? "Confirm?" : "×"}
+          </button>
         </div>
       </div>
     `;
   }).join("");
 
   if (state.activeSequenceIndex < 0) {
-    els.sequenceHint.textContent = `Tap "Set Active" on a row to enable Start`;
+    els.sequenceHint.textContent = `Tap a row or "Set Active" to enable Start`;
   } else if (state.activeSequenceIndex >= state.sequence.length) {
     els.sequenceHint.textContent = "All scenarios complete.";
   } else {
@@ -238,6 +251,8 @@ function renderHistory() {
   els.historyCount.textContent = String(state.logs.length);
   els.historyToggleBtn.setAttribute("aria-expanded", String(!state.historyCollapsed));
   els.historyBody.classList.toggle("collapsed", state.historyCollapsed);
+  els.clearLogsBtn.textContent = state.pendingClear ? "Confirm?" : "Clear";
+  els.clearLogsBtn.classList.toggle("pending", state.pendingClear);
 
   if (state.logs.length === 0) {
     els.logList.innerHTML = '<div class="log-item log-empty"><p class="log-title">No scenarios logged yet.</p></div>';
@@ -246,28 +261,35 @@ function renderHistory() {
 
   els.logList.innerHTML = state.logs.map((log) => {
     const isEditing = state.editingLogId === log.id;
-    return `
-      <article class="log-item" data-log-id="${log.id}">
-        <p class="log-title">${escapeHtml(log.scenarioName)} (${log.durationMinutes} mins)</p>
-        ${isEditing ? `
+    if (isEditing) {
+      return `
+        <article class="log-item" data-log-id="${log.id}">
           <div class="inline-editor">
+            <input class="inline-name-input" type="text" value="${escapeAttribute(state.editDraft.scenarioName)}" data-edit-name="${log.id}" placeholder="Scenario name">
             <div class="editor-row">
               <input class="inline-time-input" type="text" value="${escapeAttribute(state.editDraft.startTime)}" data-edit-start="${log.id}" inputmode="numeric" placeholder="HH:MM:SS">
               <span class="log-arrow">→</span>
               <input class="inline-time-input" type="text" value="${escapeAttribute(state.editDraft.endTime)}" data-edit-end="${log.id}" inputmode="numeric" placeholder="HH:MM:SS">
-              <button class="save-inline" type="button" data-save-log="${log.id}">✔</button>
+            </div>
+            <div class="editor-row">
+              <button class="save-inline" type="button" data-save-log="${log.id}">✔ Save</button>
+              <button class="cancel-inline text-button" type="button" data-cancel-edit="${log.id}">Cancel</button>
             </div>
             <p class="hint-text">Format: HH:MM:SS</p>
           </div>
-        ` : `
-          <div class="log-times">
-            <button class="text-button mono-time" type="button" data-begin-edit="${log.id}">${escapeHtml(log.startTime)}</button>
-            <span class="log-arrow">→</span>
-            <button class="text-button mono-time" type="button" data-begin-edit="${log.id}">${escapeHtml(log.endTime)}</button>
-          </div>
-        `}
+        </article>
+      `;
+    }
+    return `
+      <article class="log-item" data-log-id="${log.id}">
+        <p class="log-title">${escapeHtml(log.scenarioName)} (${log.durationMinutes} mins)</p>
+        <div class="log-times">
+          <button class="text-button mono-time" type="button" data-begin-edit="${log.id}">${escapeHtml(log.startTime)}</button>
+          <span class="log-arrow">→</span>
+          <button class="text-button mono-time" type="button" data-begin-edit="${log.id}">${escapeHtml(log.endTime)}</button>
+        </div>
         <div class="entry-actions">
-          <button class="text-button" type="button" data-begin-edit="${log.id}">Edit times</button>
+          <button class="text-button" type="button" data-begin-edit="${log.id}">Edit</button>
           <button class="delete-hold" type="button" data-delete-log="${log.id}">Hold to delete</button>
         </div>
       </article>
@@ -278,11 +300,9 @@ function renderHistory() {
 function renderToast() {
   if (!state.toast) {
     els.toast.classList.add("hidden");
-    els.toast.removeAttribute("aria-live");
     return;
   }
   els.toast.classList.remove("hidden");
-  els.toast.setAttribute("aria-live", "polite");
   els.toastMessage.textContent = state.toast.message;
 }
 
@@ -310,9 +330,7 @@ function startScenario() {
 }
 
 function handleEndTap() {
-  if (!state.running) {
-    return;
-  }
+  if (!state.running) return;
 
   const now = Date.now();
   if (now - state.lastEndTapAt <= END_DOUBLE_TAP_MS) {
@@ -334,18 +352,17 @@ function handleEndTap() {
 }
 
 function endScenario() {
-  if (!state.running) {
-    return;
-  }
+  if (!state.running) return;
 
   stopAlertSound();
 
   const endedAt = Date.now();
   const durationMinutes = Math.max(1, Math.round(state.running.totalDurationSeconds / 60));
+  const sequenceIndex = state.running.sequenceIndex;
   const log = {
     id: crypto.randomUUID(),
     scenarioName: state.running.scenarioName,
-    sequenceIndex: state.running.sequenceIndex,
+    sequenceIndex,
     startTime: formatTime(state.running.startedAt),
     endTime: formatTime(endedAt),
     durationMinutes,
@@ -354,6 +371,9 @@ function endScenario() {
   };
 
   state.logs.push(log);
+  if (sequenceIndex >= 0 && sequenceIndex < state.sequence.length) {
+    state.sequence[sequenceIndex].completed = true;
+  }
   state.running = null;
   state.lastEndTapAt = 0;
   els.doubleTapHint.textContent = "End requires double-tap within 500ms.";
@@ -379,25 +399,13 @@ function adjustTimer(deltaSeconds) {
   persistState();
 }
 
-function applyCustomTimer() {
-  const minutes = clampNumber(Number(els.customMinutesInput.value), 0, 120);
-  const seconds = clampNumber(Number(els.customSecondsInput.value), 0, 59);
-  const total = Math.max(10, (minutes * 60) + seconds);
-
-  if (state.running) {
-    const now = Date.now();
-    state.running.endsAt = now + (total * 1000);
-    state.running.totalDurationSeconds = total;
-  }
-  state.baseDurationSeconds = total;
-  els.customTimerPanel.classList.add("hidden");
-  renderTimer();
-  persistState();
-}
-
 function resetTimer() {
-  if (state.activeSequenceIndex >= 0 && state.activeSequenceIndex < state.sequence.length) {
-    state.baseDurationSeconds = state.sequence[state.activeSequenceIndex].durationMinutes * 60;
+  if (state.running) {
+    const total = state.running.totalDurationSeconds;
+    state.running.endsAt = Date.now() + (total * 1000);
+    stopAlertSound();
+  } else if (state.activeSequenceIndex >= 0 && state.activeSequenceIndex < state.sequence.length) {
+    state.baseDurationSeconds = Math.max(10, state.sequence[state.activeSequenceIndex].durationMinutes * 60);
   } else {
     state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
   }
@@ -406,98 +414,160 @@ function resetTimer() {
 }
 
 function addSequenceRow() {
-  state.sequence.push({ prefix: "Person", scenario: "Walking", durationMinutes: 7 });
+  state.sequence.push({
+    prefix: "Person",
+    scenarioPreset: "Custom",
+    scenario: "",
+    durationMinutes: 7,
+    completed: false
+  });
+  renderSequence();
+  renderTimer();
+  persistState();
+}
+
+function activateSequenceIndex(idx) {
+  if (idx < 0 || idx >= state.sequence.length) return;
+  state.activeSequenceIndex = idx;
+  if (!state.running) {
+    state.baseDurationSeconds = Math.max(10, state.sequence[idx].durationMinutes * 60);
+  }
+  clearPendingRemove();
   renderSequence();
   renderTimer();
   persistState();
 }
 
 function handleSequenceListClick(event) {
-  const removeIndex = event.target.dataset.seqRemove;
+  const target = event.target;
+
+  const removeIndex = target.dataset.seqRemove;
   if (removeIndex !== undefined) {
-    const idx = Number(removeIndex);
-    pushUndoAction({
-      type: "seq-remove",
-      sequence: structuredClone(state.sequence),
-      activeSequenceIndex: state.activeSequenceIndex,
-      notes: state.notes,
-      logs: structuredClone(state.logs)
-    });
-    state.sequence.splice(idx, 1);
-    if (state.activeSequenceIndex >= state.sequence.length) {
-      state.activeSequenceIndex = state.sequence.length - 1;
-    }
-    if (state.activeSequenceIndex < 0) {
-      state.activeSequenceIndex = -1;
-    }
-    renderSequence();
-    renderTimer();
-    persistState();
+    handleRowRemoveTap(Number(removeIndex));
     return;
   }
 
-  const activateIndex = event.target.dataset.seqActivate;
+  const activateIndex = target.dataset.seqActivate;
   if (activateIndex !== undefined) {
-    const idx = Number(activateIndex);
-    state.activeSequenceIndex = idx;
-    state.baseDurationSeconds = state.sequence[idx].durationMinutes * 60;
-    renderSequence();
-    renderTimer();
-    persistState();
+    activateSequenceIndex(Number(activateIndex));
     return;
   }
 
-  const upIndex = event.target.dataset.seqUp;
+  const upIndex = target.dataset.seqUp;
   if (upIndex !== undefined) {
-    const idx = Number(upIndex);
-    if (idx > 0) {
-      const temp = state.sequence[idx - 1];
-      state.sequence[idx - 1] = state.sequence[idx];
-      state.sequence[idx] = temp;
-      if (state.activeSequenceIndex === idx) state.activeSequenceIndex = idx - 1;
-      else if (state.activeSequenceIndex === idx - 1) state.activeSequenceIndex = idx;
-    }
-    renderSequence();
-    persistState();
+    moveSequenceRow(Number(upIndex), -1);
     return;
   }
 
-  const downIndex = event.target.dataset.seqDown;
+  const downIndex = target.dataset.seqDown;
   if (downIndex !== undefined) {
-    const idx = Number(downIndex);
-    if (idx < state.sequence.length - 1) {
-      const temp = state.sequence[idx + 1];
-      state.sequence[idx + 1] = state.sequence[idx];
-      state.sequence[idx] = temp;
-      if (state.activeSequenceIndex === idx) state.activeSequenceIndex = idx + 1;
-      else if (state.activeSequenceIndex === idx + 1) state.activeSequenceIndex = idx;
-    }
-    renderSequence();
-    persistState();
+    moveSequenceRow(Number(downIndex), 1);
     return;
+  }
+
+  const row = target.closest(".seq-row");
+  if (row && !target.closest("input, select, button, textarea, .seq-fields")) {
+    const idx = Number(row.dataset.seqIndex);
+    if (!Number.isNaN(idx)) activateSequenceIndex(idx);
   }
 }
 
+function moveSequenceRow(idx, direction) {
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= state.sequence.length) return;
+  const moving = state.sequence[idx];
+  state.sequence.splice(idx, 1);
+  state.sequence.splice(newIdx, 0, moving);
+  if (state.activeSequenceIndex === idx) state.activeSequenceIndex = newIdx;
+  else if (direction === -1 && state.activeSequenceIndex === newIdx) state.activeSequenceIndex = idx;
+  else if (direction === 1 && state.activeSequenceIndex === newIdx) state.activeSequenceIndex = idx;
+  clearPendingRemove();
+  renderSequence();
+  renderTimer();
+  persistState();
+}
+
+function handleRowRemoveTap(idx) {
+  if (state.pendingRemoveIndex === idx) {
+    removeSequenceRow(idx);
+    return;
+  }
+  clearPendingRemove();
+  state.pendingRemoveIndex = idx;
+  renderSequence();
+  pendingRemoveTimer = window.setTimeout(() => {
+    clearPendingRemove();
+    renderSequence();
+  }, CONFIRM_WINDOW_MS);
+}
+
+function clearPendingRemove() {
+  clearTimeout(pendingRemoveTimer);
+  pendingRemoveTimer = null;
+  state.pendingRemoveIndex = -1;
+}
+
+function removeSequenceRow(idx) {
+  clearPendingRemove();
+  pushUndoAction({
+    type: "seq-remove",
+    sequence: structuredClone(state.sequence),
+    activeSequenceIndex: state.activeSequenceIndex,
+    notes: state.notes,
+    logs: structuredClone(state.logs),
+    baseDurationSeconds: state.baseDurationSeconds,
+    running: state.running ? structuredClone(state.running) : null
+  });
+  state.sequence.splice(idx, 1);
+  if (state.activeSequenceIndex === idx) {
+    state.activeSequenceIndex = -1;
+  } else if (state.activeSequenceIndex > idx) {
+    state.activeSequenceIndex -= 1;
+  }
+  showToast("Row removed");
+  renderSequence();
+  renderTimer();
+  persistState();
+}
+
 function handleSequenceListInput(event) {
-  const prefixIndex = event.target.dataset.seqPrefixSelect;
+  const target = event.target;
+
+  const prefixIndex = target.dataset.seqPrefixSelect;
   if (prefixIndex !== undefined) {
-    state.sequence[Number(prefixIndex)].prefix = event.target.value;
+    state.sequence[Number(prefixIndex)].prefix = target.value;
     renderActiveScenarioLabel();
     persistState();
     return;
   }
 
-  const scenarioIndex = event.target.dataset.seqScenario;
-  if (scenarioIndex !== undefined) {
-    state.sequence[Number(scenarioIndex)].scenario = event.target.value;
+  const scenarioSelectIndex = target.dataset.seqScenarioSelect;
+  if (scenarioSelectIndex !== undefined) {
+    const idx = Number(scenarioSelectIndex);
+    const row = state.sequence[idx];
+    row.scenarioPreset = target.value;
+    if (row.scenarioPreset !== "Custom") {
+      row.scenario = row.scenarioPreset;
+    } else if (SCENARIO_PRESETS.includes(row.scenario)) {
+      row.scenario = "";
+    }
+    renderSequence();
+    renderTimer();
+    persistState();
+    return;
+  }
+
+  const scenarioTextIndex = target.dataset.seqScenarioText;
+  if (scenarioTextIndex !== undefined) {
+    state.sequence[Number(scenarioTextIndex)].scenario = target.value;
     renderActiveScenarioLabel();
     persistState();
     return;
   }
 
-  const durationIndex = event.target.dataset.seqDuration;
+  const durationIndex = target.dataset.seqDuration;
   if (durationIndex !== undefined) {
-    const mins = Math.max(1, Math.min(240, Number(event.target.value) || 1));
+    const mins = Math.max(1, Math.min(240, Number(target.value) || 1));
     state.sequence[Number(durationIndex)].durationMinutes = mins;
     if (state.activeSequenceIndex === Number(durationIndex) && !state.running) {
       state.baseDurationSeconds = mins * 60;
@@ -531,7 +601,11 @@ function handleLogListClick(event) {
     const log = state.logs.find((e) => e.id === beginEditId);
     if (!log) return;
     state.editingLogId = log.id;
-    state.editDraft = { startTime: log.startTime, endTime: log.endTime };
+    state.editDraft = {
+      scenarioName: log.scenarioName,
+      startTime: log.startTime,
+      endTime: log.endTime
+    };
     renderHistory();
     return;
   }
@@ -539,16 +613,20 @@ function handleLogListClick(event) {
   const saveLogId = event.target.dataset.saveLog;
   if (saveLogId) {
     saveInlineEdit(saveLogId);
+    return;
+  }
+
+  const cancelEditId = event.target.dataset.cancelEdit;
+  if (cancelEditId) {
+    state.editingLogId = null;
+    renderHistory();
   }
 }
 
 function handleLogListInput(event) {
-  if (event.target.dataset.editStart) {
-    state.editDraft.startTime = event.target.value.trim();
-  }
-  if (event.target.dataset.editEnd) {
-    state.editDraft.endTime = event.target.value.trim();
-  }
+  if (event.target.dataset.editName) state.editDraft.scenarioName = event.target.value;
+  if (event.target.dataset.editStart) state.editDraft.startTime = event.target.value.trim();
+  if (event.target.dataset.editEnd) state.editDraft.endTime = event.target.value.trim();
 }
 
 function beginHoldDelete(event) {
@@ -582,9 +660,7 @@ function clearHoldDelete() {
   if (!holdDelete) return;
   clearTimeout(holdDelete.timer);
   cancelAnimationFrame(holdDelete.raf);
-  if (holdDelete.button) {
-    holdDelete.button.style.setProperty("--hold-progress", 0);
-  }
+  if (holdDelete.button) holdDelete.button.style.setProperty("--hold-progress", 0);
   holdDelete = null;
 }
 
@@ -598,7 +674,8 @@ function deleteLog(logId) {
     sequence: structuredClone(state.sequence),
     activeSequenceIndex: state.activeSequenceIndex,
     notes: state.notes,
-    baseDurationSeconds: state.baseDurationSeconds
+    baseDurationSeconds: state.baseDurationSeconds,
+    running: state.running ? structuredClone(state.running) : null
   });
 
   state.logs.splice(index, 1);
@@ -613,10 +690,10 @@ function saveInlineEdit(logId) {
     els.copyStatus.textContent = "Use HH:MM:SS format for time edits.";
     return;
   }
-
   const log = state.logs.find((e) => e.id === logId);
   if (!log) return;
-
+  const trimmedName = state.editDraft.scenarioName.trim();
+  if (trimmedName) log.scenarioName = trimmedName;
   log.startTime = state.editDraft.startTime;
   log.endTime = state.editDraft.endTime;
   state.editingLogId = null;
@@ -629,7 +706,6 @@ async function copyLogs() {
   const output = state.logs
     .map((log) => `${log.scenarioName} (${log.durationMinutes} mins) → ${log.startTime} - ${log.endTime}`)
     .join("\n");
-
   try {
     await navigator.clipboard.writeText(output);
     els.copyStatus.textContent = `${state.logs.length} log${state.logs.length !== 1 ? "s" : ""} copied.`;
@@ -638,18 +714,38 @@ async function copyLogs() {
   }
 }
 
-function clearLogs() {
-  if (!window.confirm("Clear all logs? This can be undone.")) return;
+function handleClearLogsTap() {
+  if (state.pendingClear) {
+    clearPendingClear();
+    clearLogs();
+    return;
+  }
+  state.pendingClear = true;
+  renderHistory();
+  els.copyStatus.textContent = "Tap Confirm? to clear all logs.";
+  pendingClearTimer = window.setTimeout(() => {
+    clearPendingClear();
+    renderHistory();
+    els.copyStatus.textContent = "Clear cancelled.";
+  }, CONFIRM_WINDOW_MS);
+}
 
+function clearPendingClear() {
+  clearTimeout(pendingClearTimer);
+  pendingClearTimer = null;
+  state.pendingClear = false;
+}
+
+function clearLogs() {
   pushUndoAction({
     type: "clear",
     logs: structuredClone(state.logs),
     sequence: structuredClone(state.sequence),
     activeSequenceIndex: state.activeSequenceIndex,
     notes: state.notes,
-    baseDurationSeconds: state.baseDurationSeconds
+    baseDurationSeconds: state.baseDurationSeconds,
+    running: state.running ? structuredClone(state.running) : null
   });
-
   state.logs = [];
   state.editingLogId = null;
   els.copyStatus.textContent = "Logs cleared.";
@@ -670,18 +766,12 @@ function undoLastAction() {
     return;
   }
 
-  if (action.type === "delete" || action.type === "clear") {
-    state.logs = structuredClone(action.logs);
-    if (action.sequence) state.sequence = structuredClone(action.sequence);
-    if (action.activeSequenceIndex !== undefined) state.activeSequenceIndex = action.activeSequenceIndex;
-    if (action.notes !== undefined) state.notes = action.notes;
-    if (action.baseDurationSeconds !== undefined) state.baseDurationSeconds = action.baseDurationSeconds;
-  }
-
-  if (action.type === "seq-remove") {
-    state.sequence = structuredClone(action.sequence);
-    state.activeSequenceIndex = action.activeSequenceIndex;
-  }
+  if (action.logs !== undefined) state.logs = structuredClone(action.logs);
+  if (action.sequence !== undefined) state.sequence = structuredClone(action.sequence);
+  if (action.activeSequenceIndex !== undefined) state.activeSequenceIndex = action.activeSequenceIndex;
+  if (action.notes !== undefined) state.notes = action.notes;
+  if (action.baseDurationSeconds !== undefined) state.baseDurationSeconds = action.baseDurationSeconds;
+  if ("running" in action) state.running = action.running ? structuredClone(action.running) : null;
 
   hideToast();
   els.copyStatus.textContent = "Undo applied.";
@@ -710,10 +800,8 @@ function startTicker() {
   ticker = setInterval(() => {
     if (state.running) {
       const now = Date.now();
-      if (now >= state.running.endsAt) {
-        if (state.soundEnabled && !alertAudio) {
-          startAlertSound();
-        }
+      if (now >= state.running.endsAt && state.soundEnabled && !alertAudio) {
+        startAlertSound();
       }
     }
     renderTimer();
@@ -729,38 +817,42 @@ function startAlertSound() {
   if (alertAudio) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const playBeep = () => {
-      if (!alertAudio) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.02);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
-      alertAudio._loop = window.setTimeout(playBeep, 900);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.value = 660;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    alertAudio = {
+      ctx,
+      stop: () => {
+        try {
+          gain.gain.cancelScheduledValues(ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
+          osc.stop(ctx.currentTime + 0.1);
+          window.setTimeout(() => ctx.close().catch(() => {}), 200);
+        } catch {}
+        alertAudio = null;
+      }
     };
-    alertAudio = { ctx, _loop: null, stop: () => { clearTimeout(alertAudio._loop); ctx.close(); alertAudio = null; } };
-    playBeep();
   } catch {
     alertAudio = null;
   }
 }
 
 function stopAlertSound() {
-  if (alertAudio) {
-    alertAudio.stop();
-    alertAudio = null;
-  }
+  if (alertAudio) alertAudio.stop();
 }
 
 function buildScenarioName(row) {
   const prefix = (row.prefix || "").trim() || "Person";
-  const scenario = (row.scenario || "").trim() || "Unnamed";
+  const raw = row.scenarioPreset && row.scenarioPreset !== "Custom"
+    ? row.scenarioPreset
+    : (row.scenario || "").trim();
+  const scenario = raw || "Unnamed";
   return `${prefix} – ${scenario}`;
 }
 
@@ -786,7 +878,7 @@ function restoreState() {
 
   try {
     const saved = JSON.parse(raw);
-    state.sequence = Array.isArray(saved.sequence) ? saved.sequence : [];
+    state.sequence = Array.isArray(saved.sequence) ? saved.sequence.map(normalizeSequenceRow) : [];
     state.activeSequenceIndex = typeof saved.activeSequenceIndex === "number" ? saved.activeSequenceIndex : -1;
     state.notes = saved.notes || "";
     state.logs = Array.isArray(saved.logs) ? saved.logs : [];
@@ -797,14 +889,25 @@ function restoreState() {
     state.undoStack = Array.isArray(saved.undoStack) ? saved.undoStack.slice(0, MAX_UNDO_LEVELS) : [];
     state.toast = saved.toast || null;
 
-    if (state.running && Date.now() >= state.running.endsAt) {
-      if (state.soundEnabled) {
-        startAlertSound();
-      }
+    if (state.running && Date.now() >= state.running.endsAt && state.soundEnabled) {
+      startAlertSound();
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY);
   }
+}
+
+function normalizeSequenceRow(row) {
+  const preset = typeof row.scenarioPreset === "string"
+    ? row.scenarioPreset
+    : (SCENARIO_PRESETS.includes(row.scenario) ? row.scenario : "Custom");
+  return {
+    prefix: row.prefix || "Person",
+    scenarioPreset: preset,
+    scenario: typeof row.scenario === "string" ? row.scenario : "",
+    durationMinutes: Number(row.durationMinutes) || 5,
+    completed: Boolean(row.completed)
+  };
 }
 
 function formatCountdown(totalSeconds) {
@@ -818,20 +921,11 @@ function formatMinutesLabel(totalSeconds) {
   return `${String(Math.max(1, Math.round(totalSeconds / 60))).padStart(2, "0")} mins`;
 }
 
-function secondsToParts(totalSeconds) {
-  return { minutes: Math.floor(totalSeconds / 60), seconds: totalSeconds % 60 };
-}
-
 function formatTime(timestamp) {
   const d = new Date(timestamp);
   return [d.getHours(), d.getMinutes(), d.getSeconds()]
     .map((n) => String(n).padStart(2, "0"))
     .join(":");
-}
-
-function clampNumber(value, min, max) {
-  if (Number.isNaN(value)) return min;
-  return Math.min(Math.max(value, min), max);
 }
 
 function isValidTime(value) {

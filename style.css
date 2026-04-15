@@ -1,18 +1,24 @@
 :root {
-  --bg-top: #f0e1cb;
-  --bg-bottom: #edf5ec;
-  --panel: rgba(255, 250, 243, 0.92);
-  --panel-strong: #fffdfa;
-  --line: rgba(63, 50, 35, 0.12);
-  --text: #261f18;
-  --muted: #6e6155;
-  --accent: #1d7868;
-  --accent-strong: #114e42;
-  --danger: #b24a2e;
-  --danger-strong: #832f1b;
-  --warn: #c47a1a;
-  --shadow: 0 18px 40px rgba(77, 54, 27, 0.12);
-  --clock-h: 52px;
+  --bg-top: #0b1220;
+  --bg-bottom: #121a2d;
+  --panel: rgba(22, 31, 52, 0.82);
+  --panel-strong: rgba(28, 39, 64, 0.94);
+  --line: rgba(148, 163, 184, 0.18);
+  --text: #e6edf7;
+  --muted: #94a3b8;
+  --accent: #7c5cff;
+  --accent-strong: #a594ff;
+  --accent-soft: rgba(124, 92, 255, 0.18);
+  --accent-glow: rgba(124, 92, 255, 0.35);
+  --success: #22d3a5;
+  --success-soft: rgba(34, 211, 165, 0.18);
+  --danger: #f87171;
+  --danger-strong: #fca5a5;
+  --danger-soft: rgba(248, 113, 113, 0.16);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.16);
+  --shadow: 0 24px 48px rgba(5, 10, 25, 0.5);
+  --clock-h: 84px;
 }
 
 * {
@@ -29,9 +35,10 @@ body {
   font-family: "Space Grotesk", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(255, 209, 136, 0.56), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(29, 120, 104, 0.14), transparent 34%),
+    radial-gradient(circle at 15% 0%, rgba(124, 92, 255, 0.28), transparent 35%),
+    radial-gradient(circle at 85% 100%, rgba(34, 211, 165, 0.18), transparent 40%),
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  background-attachment: fixed;
 }
 
 button,
@@ -39,6 +46,7 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
 }
 
 button {
@@ -51,23 +59,45 @@ button {
   left: 0;
   right: 0;
   z-index: 100;
-  min-height: 48px;
-  background: rgba(33, 28, 23, 0.95);
-  backdrop-filter: blur(12px);
+  min-height: var(--clock-h);
+  background: rgba(11, 18, 32, 0.92);
+  backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(124, 92, 255, 0.25);
+  box-shadow: 0 10px 30px rgba(5, 10, 25, 0.35);
+}
+
+.clock-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
 }
 
 .live-clock {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 1.4rem;
+  font-size: 1.55rem;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+
+.clock-location {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent-strong);
+  letter-spacing: 0.06em;
+}
+
+.clock-offset {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
 }
 
 .app-shell {
@@ -81,16 +111,17 @@ button {
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 22px;
   box-shadow: var(--shadow);
   padding: 16px;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
 }
 
 .timer-panel {
   position: sticky;
   top: calc(var(--clock-h) + 8px);
   z-index: 5;
+  border-color: rgba(124, 92, 255, 0.3);
 }
 
 .panel-header {
@@ -123,10 +154,10 @@ button {
 }
 
 .eyebrow {
-  font-size: 0.76rem;
-  letter-spacing: 0.1em;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent-strong);
   margin-bottom: 4px;
 }
 
@@ -134,30 +165,30 @@ button {
   padding: 7px 12px;
   border-radius: 999px;
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   transition: background 0.2s, color 0.2s;
 }
 
 .status-ready {
-  background: rgba(29, 120, 104, 0.1);
+  background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
 .status-running {
-  background: rgba(29, 120, 104, 0.18);
-  color: var(--accent-strong);
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status-overtime {
-  background: rgba(196, 122, 26, 0.16);
+  background: var(--warn-soft);
   color: var(--warn);
   animation: pulse-warn 1s ease-in-out infinite;
 }
 
 @keyframes pulse-warn {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
+  50% { opacity: 0.6; }
 }
 
 .timer-metrics {
@@ -175,18 +206,21 @@ button {
   line-height: 0.95;
   letter-spacing: -0.05em;
   transition: color 0.3s;
+  color: #fff;
+  text-shadow: 0 0 32px var(--accent-glow);
 }
 
 .timer-display.overtime {
   color: var(--warn);
+  text-shadow: 0 0 32px var(--warn-soft);
 }
 
 .duration-card {
   min-width: 100px;
   padding: 10px 14px;
   border: 1px solid var(--line);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
   display: grid;
   gap: 4px;
 }
@@ -194,6 +228,11 @@ button {
 .duration-label {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.duration-card strong {
+  color: var(--accent-strong);
+  font-size: 1rem;
 }
 
 .adjust-row {
@@ -210,7 +249,7 @@ button {
   justify-content: center;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(29, 120, 104, 0.08);
+  background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 0.78rem;
   letter-spacing: 0.08em;
@@ -223,39 +262,60 @@ button {
   justify-content: center;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   cursor: pointer;
   padding: 10px 8px;
-  font-weight: 500;
-  transition: background 0.15s;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.adjust-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent);
 }
 
 .adjust-button:active {
-  background: rgba(29, 120, 104, 0.12);
+  background: var(--accent-soft);
 }
 
 .secondary-button {
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   cursor: pointer;
   padding: 10px 14px;
   min-height: 44px;
   white-space: nowrap;
-  font-weight: 500;
-  transition: background 0.15s;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent);
 }
 
 .secondary-button:active {
-  background: rgba(29, 120, 104, 0.1);
+  background: var(--accent-soft);
+}
+
+.secondary-button.pending {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger-strong);
+  animation: pulse-warn 1s ease-in-out infinite;
 }
 
 .timer-actions {
   margin-top: 10px;
   display: flex;
   gap: 10px;
+}
+
+.timer-actions .secondary-button {
+  flex: 1;
 }
 
 .primary-actions {
@@ -273,8 +333,8 @@ button {
   cursor: pointer;
   font-weight: 700;
   font-size: 1.05rem;
-  letter-spacing: 0.01em;
-  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
 }
 
 .primary-button:active {
@@ -282,18 +342,21 @@ button {
 }
 
 .start-button {
-  background: linear-gradient(135deg, var(--accent), #3ea08d);
+  background: linear-gradient(135deg, var(--accent), #5eead4);
+  box-shadow: 0 12px 26px rgba(124, 92, 255, 0.35);
 }
 
 .end-button {
-  background: linear-gradient(135deg, var(--danger), #d06b44);
+  background: linear-gradient(135deg, var(--danger), #f59e0b);
+  box-shadow: 0 12px 26px rgba(248, 113, 113, 0.3);
 }
 
 .primary-button:disabled,
 .adjust-button:disabled,
 .secondary-button:disabled {
-  opacity: 0.38;
+  opacity: 0.35;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .timer-footer {
@@ -313,7 +376,7 @@ button {
 
 .hint-active {
   color: var(--warn);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sound-toggle {
@@ -325,46 +388,31 @@ button {
   cursor: pointer;
 }
 
-.custom-timer {
-  margin-top: 10px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--line);
-}
-
-.custom-timer-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.time-part-input {
-  width: 72px;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.84);
-  color: var(--text);
-  padding: 8px 10px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.time-sep {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
+.sound-toggle input {
+  accent-color: var(--accent);
 }
 
 .text-input,
 .notes-input,
-.inline-time-input {
+.inline-time-input,
+.inline-name-input {
   width: 100%;
   min-height: 44px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text);
   padding: 10px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.text-input:focus,
+.notes-input:focus,
+.inline-time-input:focus,
+.inline-name-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.08);
 }
 
 .notes-input {
@@ -388,26 +436,56 @@ button {
 }
 
 .seq-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
   gap: 10px;
   align-items: flex-start;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.6);
-  transition: border-color 0.2s, background 0.2s;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+  cursor: pointer;
+  min-width: 0;
 }
 
 .seq-row.seq-active {
-  border-color: rgba(29, 120, 104, 0.6);
-  background: rgba(29, 120, 104, 0.08);
-  box-shadow: 0 0 0 2px rgba(29, 120, 104, 0.25);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.seq-row.seq-completed {
+  opacity: 0.55;
+  background: rgba(34, 211, 165, 0.06);
+  border-color: rgba(34, 211, 165, 0.35);
+}
+
+.seq-index-number {
+  min-width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.seq-completed .seq-index-number {
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .seq-controls {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .seq-btn {
@@ -415,7 +493,7 @@ button {
   height: 28px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   font-size: 0.85rem;
   cursor: pointer;
@@ -430,93 +508,42 @@ button {
 }
 
 .seq-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.seq-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.seq-activate-btn {
-  min-width: 72px;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.seq-activate-btn.active {
-  background: rgba(29, 120, 104, 0.15);
+  background: rgba(124, 92, 255, 0.15);
+  color: var(--accent-strong);
   border-color: var(--accent);
-  color: var(--accent-strong);
-}
-
-.seq-activate-btn:hover {
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.seq-remove-btn {
-  width: 32px;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--danger);
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.seq-remove-btn:hover {
-  background: rgba(178, 74, 46, 0.1);
-}
-
-
-
-.seq-index-badge {
-  min-width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(29, 120, 104, 0.12);
-  color: var(--accent-strong);
-  font-size: 0.82rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 8px;
-}
-
-.seq-done .seq-index-badge {
-  background: rgba(0, 0, 0, 0.07);
-  color: var(--muted);
-}
-
-.seq-active .seq-index-badge {
-  background: rgba(29, 120, 104, 0.22);
-  color: var(--accent-strong);
 }
 
 .seq-fields {
-  flex: 1;
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .seq-prefix-input,
+.seq-scenario-select,
 .seq-scenario-input {
   min-height: 40px;
   padding: 8px 10px;
   border-radius: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.seq-scenario-select,
+.seq-prefix-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+
+.seq-scenario-select option,
+.seq-prefix-input option {
+  background: var(--bg-bottom);
+  color: var(--text);
 }
 
 .seq-dur-row {
@@ -539,28 +566,71 @@ button {
   font-size: 0.88rem;
 }
 
-.seq-remove-btn {
+.seq-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+}
+
+.seq-activate-btn {
+  min-width: 96px;
+  min-height: 32px;
   border: 1px solid var(--line);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--muted);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1.2rem;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.seq-activate-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.seq-completed .seq-activate-btn {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.seq-activate-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.seq-remove-btn {
+  min-width: 36px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--danger);
+  font-size: 1rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin-top: 4px;
-  transition: background 0.15s, color 0.15s;
+  padding: 4px 8px;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
-.seq-remove-btn:hover,
-.seq-remove-btn:active {
-  background: rgba(178, 74, 46, 0.1);
+.seq-remove-btn:hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.seq-remove-btn.pending {
+  background: var(--danger-soft);
+  border-color: var(--danger);
   color: var(--danger-strong);
+  font-size: 0.72rem;
+  animation: pulse-warn 1s ease-in-out infinite;
 }
 
 .history-header-row {
@@ -577,7 +647,7 @@ button {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   cursor: pointer;
   padding: 10px 14px;
@@ -586,7 +656,7 @@ button {
 }
 
 .badge {
-  background: rgba(29, 120, 104, 0.12);
+  background: var(--accent-soft);
   color: var(--accent-strong);
   border-radius: 999px;
   padding: 2px 9px;
@@ -627,6 +697,7 @@ button {
   margin: 0;
   font-size: 0.97rem;
   font-weight: 600;
+  color: var(--text);
 }
 
 .log-times {
@@ -663,6 +734,12 @@ button {
   color: var(--accent-strong);
   cursor: pointer;
   font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.text-button:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .danger-button {
@@ -670,9 +747,12 @@ button {
 }
 
 .inline-editor {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 10px;
+}
+
+.inline-name-input {
+  font-weight: 600;
 }
 
 .editor-row {
@@ -683,9 +763,8 @@ button {
 }
 
 .inline-time-input {
-  width: auto;
   flex: 1;
-  min-width: 90px;
+  min-width: 110px;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.9rem;
   padding: 8px 10px;
@@ -693,14 +772,23 @@ button {
 }
 
 .save-inline {
-  border: 1px solid var(--line);
+  border: 1px solid var(--accent);
   border-radius: 12px;
-  background: rgba(29, 120, 104, 0.1);
+  background: var(--accent-soft);
   color: var(--accent-strong);
   font-weight: 700;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 8px 14px;
   min-height: 40px;
+}
+
+.save-inline:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cancel-inline {
+  color: var(--muted);
 }
 
 .delete-hold {
@@ -708,18 +796,19 @@ button {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--danger-strong);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--danger);
   cursor: pointer;
   padding: 6px 12px;
   font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .delete-hold::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(178, 74, 46, 0.22), transparent);
+  background: linear-gradient(90deg, var(--danger-soft), transparent);
   transform: scaleX(var(--hold-progress, 0));
   transform-origin: left;
   transition: none;
@@ -733,14 +822,15 @@ button {
   z-index: 200;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(33, 28, 23, 0.96);
-  color: #fff9f2;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid var(--accent);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.26);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-glow);
+  backdrop-filter: blur(10px);
   animation: slide-up 0.2s ease;
 }
 
@@ -750,10 +840,10 @@ button {
 }
 
 .toast-button {
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--accent);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff9f2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   font-weight: 700;
   cursor: pointer;
   padding: 7px 14px;
@@ -762,8 +852,9 @@ button {
   transition: background 0.15s;
 }
 
-.toast-button:active {
-  background: rgba(255, 255, 255, 0.22);
+.toast-button:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .hidden {
@@ -786,7 +877,7 @@ button {
     align-items: end;
   }
 
-  .seq-dur-row {
-    margin-top: 0;
+  .seq-fields .seq-scenario-input {
+    grid-column: 1 / -1;
   }
 }
