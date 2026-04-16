@@ -112,6 +112,18 @@
       </div>
     </section>
 
+    <section class="panel clear-all-panel">
+      <button id="clearAllBtn" class="clear-all-hold" type="button">Hold to Clear All Data</button>
+      <div id="clearAllConfirm" class="clear-all-confirm hidden">
+        <p class="hint-text">Type <strong>clear</strong> to wipe all data.</p>
+        <div class="clear-all-row">
+          <input id="clearAllInput" class="text-input" type="text" placeholder="Type clear" autocomplete="off">
+          <button id="clearAllSubmit" class="secondary-button danger-button" type="button">Wipe</button>
+          <button id="clearAllCancel" class="secondary-button" type="button">Cancel</button>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite">

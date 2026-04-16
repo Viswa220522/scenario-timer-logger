@@ -1074,6 +1074,58 @@ button {
   color: #fff;
 }
 
+/* Clear all */
+
+.clear-all-panel {
+  text-align: center;
+}
+
+.clear-all-hold {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--danger-soft);
+  border-radius: 14px;
+  background: rgba(248, 113, 113, 0.06);
+  color: var(--danger);
+  cursor: pointer;
+  padding: 12px 16px;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+}
+
+.clear-all-hold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--danger-soft), transparent);
+  transform: scaleX(var(--hold-progress, 0));
+  transform-origin: left;
+  transition: none;
+}
+
+.clear-all-hold:hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.clear-all-confirm {
+  margin-top: 12px;
+}
+
+.clear-all-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.clear-all-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
 .hidden {
   display: none !important;
 }

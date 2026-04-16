@@ -63,6 +63,11 @@ const els = {
   toast: document.getElementById("toast"),
   toastMessage: document.getElementById("toastMessage"),
   toastUndoBtn: document.getElementById("toastUndoBtn"),
+  clearAllBtn: document.getElementById("clearAllBtn"),
+  clearAllConfirm: document.getElementById("clearAllConfirm"),
+  clearAllInput: document.getElementById("clearAllInput"),
+  clearAllSubmit: document.getElementById("clearAllSubmit"),
+  clearAllCancel: document.getElementById("clearAllCancel"),
   adjustButtons: Array.from(document.querySelectorAll("[data-adjust]"))
 };
 
@@ -74,7 +79,9 @@ let holdActivate = null;
 let alertAudio = null;
 let soundMutedForRun = false;
 let holdReset = null;
+let holdClearAll = null;
 const HOLD_RESET_MS = 500;
+const HOLD_CLEAR_ALL_MS = 500;
 
 init();
 
@@ -140,6 +147,13 @@ function bindEvents() {
   els.logList.addEventListener("pointerup", clearHoldDelete);
   els.logList.addEventListener("pointerleave", clearHoldDelete);
   els.logList.addEventListener("pointercancel", clearHoldDelete);
+
+  els.clearAllBtn.addEventListener("pointerdown", beginHoldClearAll);
+  els.clearAllBtn.addEventListener("pointerup", clearHoldClearAll);
+  els.clearAllBtn.addEventListener("pointerleave", clearHoldClearAll);
+  els.clearAllBtn.addEventListener("pointercancel", clearHoldClearAll);
+  els.clearAllSubmit.addEventListener("click", submitClearAll);
+  els.clearAllCancel.addEventListener("click", cancelClearAll);
 }
 
 function renderAll() {
@@ -1103,6 +1117,71 @@ function startAlertSound() {
 
 function stopAlertSound() {
   if (alertAudio) alertAudio.stop();
+}
+
+function beginHoldClearAll(event) {
+  clearHoldClearAll();
+  const btn = els.clearAllBtn;
+  const startedAt = performance.now();
+
+  holdClearAll = {
+    timer: window.setTimeout(() => {
+      clearHoldClearAll();
+      els.clearAllConfirm.classList.remove("hidden");
+      els.clearAllInput.value = "";
+      els.clearAllInput.focus();
+    }, HOLD_CLEAR_ALL_MS),
+    raf: 0,
+    startedAt
+  };
+
+  const animate = () => {
+    if (!holdClearAll) return;
+    const progress = Math.min((performance.now() - startedAt) / HOLD_CLEAR_ALL_MS, 1);
+    btn.style.setProperty("--hold-progress", progress);
+    holdClearAll.raf = requestAnimationFrame(animate);
+  };
+  animate();
+}
+
+function clearHoldClearAll() {
+  if (!holdClearAll) return;
+  clearTimeout(holdClearAll.timer);
+  cancelAnimationFrame(holdClearAll.raf);
+  els.clearAllBtn.style.setProperty("--hold-progress", 0);
+  holdClearAll = null;
+}
+
+function submitClearAll() {
+  if (els.clearAllInput.value.trim().toLowerCase() !== "clear") return;
+  stopAlertSound();
+  soundMutedForRun = false;
+  state.sequence = [];
+  state.activeSequenceIndex = -1;
+  state.notes = "";
+  state.logs = [];
+  state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
+  state.running = null;
+  state.soundEnabled = true;
+  state.historyCollapsed = false;
+  state.editingLogId = null;
+  state.editDraft = { scenarioName: "", startTime: "", endTime: "" };
+  state.lastEndTapAt = 0;
+  state.undoStack = [];
+  state.toast = null;
+  state.pendingClear = false;
+  state.pendingRemoveIndex = -1;
+  state.timerMode = "sequence";
+  localStorage.removeItem(STORAGE_KEY);
+  els.clearAllConfirm.classList.add("hidden");
+  els.clearAllInput.value = "";
+  els.copyStatus.textContent = "All data cleared.";
+  renderAll();
+}
+
+function cancelClearAll() {
+  els.clearAllConfirm.classList.add("hidden");
+  els.clearAllInput.value = "";
 }
 
 function buildScenarioName(row) {
