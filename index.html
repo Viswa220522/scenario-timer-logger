@@ -12,7 +12,7 @@
 <body>
   <header class="clock-bar">
     <div class="clock-stack">
-      <span id="liveClock" class="live-clock">00:00 AM</span>
+      <span id="liveClock" class="live-clock">00:00:00</span>
       <span class="clock-location">Chennai, India (IST)</span>
       <span class="clock-offset">Today, +0 hrs</span>
     </div>
@@ -20,13 +20,18 @@
 
   <main class="app-shell">
 
-    <section class="panel timer-panel">
+    <section id="timerPanel" class="panel timer-panel">
       <div class="panel-header">
         <div class="header-left">
           <p class="eyebrow">Active Scenario</p>
           <h1 id="activeScenarioLabel">No scenario selected</h1>
         </div>
         <p id="timerStatus" class="status-pill">Ready</p>
+      </div>
+
+      <div class="mode-switch">
+        <button id="modeSequenceBtn" class="mode-btn mode-active" type="button">Sequence</button>
+        <button id="modeTimerBtn" class="mode-btn" type="button">Timer</button>
       </div>
 
       <div class="timer-metrics">
@@ -47,7 +52,7 @@
 
       <div class="timer-actions">
         <button id="resetTimerBtn" class="secondary-button" type="button">Reset</button>
-        <button id="stopSoundBtn" class="secondary-button stop-sound-button hidden" type="button">🔇 Stop Sound</button>
+        <button id="stopSoundBtn" class="secondary-button stop-sound-button hidden" type="button">Stop Sound</button>
       </div>
 
       <div class="primary-actions">
@@ -86,7 +91,10 @@
           <p class="eyebrow">Notes</p>
           <h2>Metadata</h2>
         </div>
-        <button id="insertTimeBtn" class="secondary-button" type="button">+ Time</button>
+        <div class="notes-toolbar">
+          <button id="insertTimeBtn" class="secondary-button" type="button">+ Time</button>
+          <button id="copyNotesBtn" class="secondary-button" type="button">Copy</button>
+        </div>
       </div>
       <textarea id="notesInput" class="notes-input" placeholder="Room, hardware, tester, anomalies, setup notes..."></textarea>
     </section>

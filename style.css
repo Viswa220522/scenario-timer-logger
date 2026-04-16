@@ -17,6 +17,10 @@
   --danger-soft: rgba(248, 113, 113, 0.16);
   --warn: #fbbf24;
   --warn-soft: rgba(251, 191, 36, 0.16);
+  --cyan: #06b6d4;
+  --cyan-strong: #67e8f9;
+  --cyan-soft: rgba(6, 182, 212, 0.18);
+  --cyan-glow: rgba(6, 182, 212, 0.35);
   --shadow: 0 24px 48px rgba(5, 10, 25, 0.5);
   --clock-h: 84px;
 }
@@ -190,6 +194,85 @@ button {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+
+/* Mode switch */
+
+.mode-switch {
+  display: flex;
+  gap: 4px;
+  margin: 10px 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 4px;
+}
+
+.mode-btn {
+  flex: 1;
+  min-height: 38px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.mode-btn:hover {
+  color: var(--text);
+}
+
+.mode-btn.mode-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* Standalone timer mode overrides */
+
+.timer-panel.mode-standalone {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.timer-panel.mode-standalone .eyebrow {
+  color: var(--cyan-strong);
+}
+
+.timer-panel.mode-standalone .mode-btn.mode-active {
+  background: var(--cyan-soft);
+  color: var(--cyan-strong);
+}
+
+.timer-panel.mode-standalone .timer-display {
+  text-shadow: 0 0 32px var(--cyan-glow);
+}
+
+.timer-panel.mode-standalone .status-ready {
+  background: var(--cyan-soft);
+  color: var(--cyan-strong);
+}
+
+.timer-panel.mode-standalone .status-running {
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.timer-panel.mode-standalone .adjust-label {
+  background: var(--cyan-soft);
+  color: var(--cyan-strong);
+}
+
+.timer-panel.mode-standalone .duration-card strong {
+  color: var(--cyan-strong);
+}
+
+.timer-panel.mode-standalone .start-button {
+  background: linear-gradient(135deg, var(--cyan), #22d3ee);
+  box-shadow: 0 12px 26px rgba(6, 182, 212, 0.35);
+}
+
+/* Timer metrics */
 
 .timer-metrics {
   display: grid;
@@ -435,6 +518,11 @@ button {
   margin-top: 4px;
 }
 
+.notes-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
 .sequence-list {
   display: grid;
   gap: 10px;
@@ -457,9 +545,11 @@ button {
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.03);
-  transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+  transition: border-color 0.15s, background 0.2s, opacity 0.2s;
   cursor: pointer;
   min-width: 0;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 .seq-row.seq-active {
@@ -472,6 +562,12 @@ button {
   opacity: 0.55;
   background: rgba(34, 211, 165, 0.06);
   border-color: rgba(34, 211, 165, 0.35);
+}
+
+.seq-row.hold-activating {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transition: border-color 0.15s, background 0.5s ease-in, opacity 0.2s;
 }
 
 .seq-index-number {
@@ -562,13 +658,40 @@ button {
 .seq-dur-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+.seq-dur-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.seq-dur-btn:hover {
+  background: rgba(124, 92, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.seq-dur-btn:active {
+  background: var(--accent-soft);
 }
 
 .seq-dur-input {
-  width: 72px;
-  min-height: 40px;
-  padding: 8px 10px;
+  width: 60px;
+  min-height: 36px;
+  padding: 6px 8px;
   border-radius: 12px;
   text-align: center;
   flex-shrink: 0;
@@ -614,6 +737,31 @@ button {
 
 .seq-activate-btn:hover:not(.active) {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.seq-reuse-btn {
+  min-width: 96px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.seq-reuse-btn:hover {
+  background: rgba(124, 92, 255, 0.12);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.seq-reuse-btn:active {
+  background: var(--accent-soft);
 }
 
 .seq-remove-btn {
