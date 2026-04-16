@@ -72,6 +72,7 @@ let toastTimer = null;
 let holdDelete = null;
 let holdActivate = null;
 let alertAudio = null;
+let soundMutedForRun = false;
 
 init();
 
@@ -99,6 +100,7 @@ function bindEvents() {
   els.resetTimerBtn.addEventListener("click", resetTimer);
   els.stopSoundBtn.addEventListener("click", () => {
     stopAlertSound();
+    soundMutedForRun = true;
     renderTimer();
   });
 
@@ -154,7 +156,7 @@ function renderClock() {
 
 function renderTimer() {
   const remainingSeconds = state.running
-    ? Math.max(0, Math.ceil((state.running.endsAt - Date.now()) / 1000))
+    ? Math.ceil((state.running.endsAt - Date.now()) / 1000)
     : state.baseDurationSeconds;
   const totalSeconds = state.running
     ? state.running.totalDurationSeconds
@@ -192,6 +194,7 @@ function renderTimer() {
   els.modeSequenceBtn.classList.toggle("mode-active", state.timerMode === "sequence");
   els.modeTimerBtn.classList.toggle("mode-active", state.timerMode === "standalone");
   els.timerPanel.classList.toggle("mode-standalone", state.timerMode === "standalone");
+  els.resetTimerBtn.classList.toggle("hidden", state.timerMode === "sequence");
 
   renderActiveScenarioLabel();
 }
@@ -310,12 +313,14 @@ function renderHistory() {
     return;
   }
 
-  els.logList.innerHTML = state.logs.map((log) => {
+  els.logList.innerHTML = state.logs.map((log, logIndex) => {
+    const serialNum = logIndex + 1;
     const isEditing = state.editingLogId === log.id;
     if (isEditing) {
       return `
         <article class="log-item" data-log-id="${log.id}">
           <div class="inline-editor">
+            <div class="log-title-row"><span class="log-serial">${serialNum}</span></div>
             <input class="inline-name-input" type="text" value="${escapeAttribute(state.editDraft.scenarioName)}" data-edit-name="${log.id}" placeholder="Scenario name">
             <div class="editor-row">
               <input class="inline-time-input" type="text" value="${escapeAttribute(state.editDraft.startTime)}" data-edit-start="${log.id}" inputmode="numeric" placeholder="HH:MM:SS">
@@ -333,7 +338,10 @@ function renderHistory() {
     }
     return `
       <article class="log-item" data-log-id="${log.id}">
-        <p class="log-title">${escapeHtml(log.scenarioName)} (${log.durationMinutes} mins)</p>
+        <div class="log-title-row">
+          <span class="log-serial">${serialNum}</span>
+          <p class="log-title">${escapeHtml(log.scenarioName)} (${log.durationMinutes} mins)</p>
+        </div>
         <div class="log-times">
           <button class="text-button mono-time" type="button" data-begin-edit="${log.id}">${escapeHtml(log.startTime)}</button>
           <span class="log-arrow">\u2192</span>
@@ -367,6 +375,7 @@ function setTimerMode(mode) {
 
 function startScenario() {
   if (state.running) return;
+  soundMutedForRun = false;
 
   if (state.timerMode === "standalone") {
     const durationSeconds = Math.max(10, state.baseDurationSeconds);
@@ -430,6 +439,7 @@ function endScenario() {
   if (!state.running) return;
 
   stopAlertSound();
+  soundMutedForRun = false;
 
   if (state.running.sequenceIndex === -1) {
     state.running = null;
@@ -486,12 +496,12 @@ function adjustTimer(deltaSeconds) {
 }
 
 function resetTimer() {
+  if (state.timerMode === "sequence") return;
   if (state.running) {
     const total = state.running.totalDurationSeconds;
     state.running.endsAt = Date.now() + (total * 1000);
     stopAlertSound();
-  } else if (state.timerMode === "sequence" && state.activeSequenceIndex >= 0 && state.activeSequenceIndex < state.sequence.length) {
-    state.baseDurationSeconds = Math.max(10, state.sequence[state.activeSequenceIndex].durationMinutes * 60);
+    soundMutedForRun = false;
   } else {
     state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
   }
@@ -504,7 +514,7 @@ function addSequenceRow() {
     prefix: "Person",
     scenarioPreset: "Custom",
     scenario: "",
-    durationMinutes: 7,
+    durationMinutes: 5,
     completed: false
   });
   renderSequence();
@@ -989,7 +999,7 @@ function startTicker() {
   ticker = setInterval(() => {
     if (state.running) {
       const now = Date.now();
-      if (now >= state.running.endsAt && state.soundEnabled && !alertAudio) {
+      if (now >= state.running.endsAt && state.soundEnabled && !alertAudio && !soundMutedForRun) {
         startAlertSound();
       }
     }
@@ -1111,10 +1121,12 @@ function normalizeSequenceRow(row) {
 }
 
 function formatCountdown(totalSeconds) {
-  const safe = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const negative = totalSeconds < 0;
+  const abs = Math.abs(totalSeconds);
+  const minutes = Math.floor(abs / 60);
+  const seconds = abs % 60;
+  const display = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return negative ? `-${display}` : display;
 }
 
 function formatMinutesLabel(totalSeconds) {

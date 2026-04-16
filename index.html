@@ -11,11 +11,7 @@
 </head>
 <body>
   <header class="clock-bar">
-    <div class="clock-stack">
-      <span id="liveClock" class="live-clock">00:00:00</span>
-      <span class="clock-location">Chennai, India (IST)</span>
-      <span class="clock-offset">Today, +0 hrs</span>
-    </div>
+    <span id="liveClock" class="live-clock">00:00:00</span>
   </header>
 
   <main class="app-shell">
@@ -51,7 +47,7 @@
       </div>
 
       <div class="timer-actions">
-        <button id="resetTimerBtn" class="secondary-button" type="button">Reset</button>
+        <button id="resetTimerBtn" class="secondary-button hidden" type="button">Reset</button>
         <button id="stopSoundBtn" class="secondary-button stop-sound-button hidden" type="button">Stop Sound</button>
       </div>
 
@@ -92,8 +88,8 @@
           <h2>Metadata</h2>
         </div>
         <div class="notes-toolbar">
-          <button id="insertTimeBtn" class="secondary-button" type="button">+ Time</button>
           <button id="copyNotesBtn" class="secondary-button" type="button">Copy</button>
+          <button id="insertTimeBtn" class="secondary-button" type="button">+ Time</button>
         </div>
       </div>
       <textarea id="notesInput" class="notes-input" placeholder="Room, hardware, tester, anomalies, setup notes..."></textarea>
