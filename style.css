@@ -971,6 +971,39 @@ button {
   color: var(--muted);
 }
 
+/* Hold reset */
+
+.reset-hold {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px 14px;
+  min-height: 44px;
+  white-space: nowrap;
+  font-weight: 600;
+  touch-action: manipulation;
+}
+
+.reset-hold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent-soft), transparent);
+  transform: scaleX(var(--hold-progress, 0));
+  transform-origin: left;
+  transition: none;
+}
+
+.reset-hold:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent);
+}
+
 /* Hold delete */
 
 .delete-hold {

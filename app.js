@@ -73,6 +73,8 @@ let holdDelete = null;
 let holdActivate = null;
 let alertAudio = null;
 let soundMutedForRun = false;
+let holdReset = null;
+const HOLD_RESET_MS = 500;
 
 init();
 
@@ -97,7 +99,10 @@ function bindEvents() {
     button.addEventListener("click", () => adjustTimer(Number(button.dataset.adjust)));
   });
 
-  els.resetTimerBtn.addEventListener("click", resetTimer);
+  els.resetTimerBtn.addEventListener("pointerdown", beginHoldReset);
+  els.resetTimerBtn.addEventListener("pointerup", clearHoldReset);
+  els.resetTimerBtn.addEventListener("pointerleave", clearHoldReset);
+  els.resetTimerBtn.addEventListener("pointercancel", clearHoldReset);
   els.stopSoundBtn.addEventListener("click", () => {
     stopAlertSound();
     soundMutedForRun = true;
@@ -442,11 +447,24 @@ function endScenario() {
   soundMutedForRun = false;
 
   if (state.running.sequenceIndex === -1) {
+    const endedAt = Date.now();
+    const durationMinutes = Math.max(1, Math.round(state.running.totalDurationSeconds / 60));
+    const log = {
+      id: crypto.randomUUID(),
+      scenarioName: "Timer",
+      sequenceIndex: -1,
+      startTime: formatTime(state.running.startedAt),
+      endTime: formatTime(endedAt),
+      durationMinutes,
+      startedAt: state.running.startedAt,
+      endedAt
+    };
+    state.logs.push(log);
     state.running = null;
     state.lastEndTapAt = 0;
     els.doubleTapHint.textContent = "End requires double-tap within 500ms.";
     els.doubleTapHint.classList.remove("hint-active");
-    els.copyStatus.textContent = "Timer stopped.";
+    els.copyStatus.textContent = "Timer saved.";
     renderAll();
     persistState();
     return;
@@ -495,17 +513,49 @@ function adjustTimer(deltaSeconds) {
   persistState();
 }
 
+function beginHoldReset(event) {
+  if (state.timerMode === "sequence") return;
+  clearHoldReset();
+  const startedAt = performance.now();
+  const btn = els.resetTimerBtn;
+
+  holdReset = {
+    timer: window.setTimeout(() => {
+      resetTimer();
+      clearHoldReset();
+    }, HOLD_RESET_MS),
+    raf: 0,
+    startedAt
+  };
+
+  const animate = () => {
+    if (!holdReset) return;
+    const progress = Math.min((performance.now() - startedAt) / HOLD_RESET_MS, 1);
+    btn.style.setProperty("--hold-progress", progress);
+    holdReset.raf = requestAnimationFrame(animate);
+  };
+  animate();
+}
+
+function clearHoldReset() {
+  if (!holdReset) return;
+  clearTimeout(holdReset.timer);
+  cancelAnimationFrame(holdReset.raf);
+  els.resetTimerBtn.style.setProperty("--hold-progress", 0);
+  holdReset = null;
+}
+
 function resetTimer() {
   if (state.timerMode === "sequence") return;
-  if (state.running) {
-    const total = state.running.totalDurationSeconds;
-    state.running.endsAt = Date.now() + (total * 1000);
-    stopAlertSound();
-    soundMutedForRun = false;
-  } else {
-    state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
-  }
-  renderTimer();
+  stopAlertSound();
+  soundMutedForRun = false;
+  state.running = null;
+  state.baseDurationSeconds = DEFAULT_DURATION_SECONDS;
+  state.lastEndTapAt = 0;
+  els.doubleTapHint.textContent = "End requires double-tap within 500ms.";
+  els.doubleTapHint.classList.remove("hint-active");
+  els.copyStatus.textContent = "Timer reset.";
+  renderAll();
   persistState();
 }
 
